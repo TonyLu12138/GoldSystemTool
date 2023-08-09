@@ -16,6 +16,7 @@ i_ = int(config['i_']['i_'])
 detailed_logging = config.getboolean('debug', 'detailed_logging')
 show_progress_bar = detailed_logging
 
+# 计算平方根
 def root(num):
     with tqdm(total=100, desc="计算平方根进度", disable=not show_progress_bar) as pbar:
         square_root = cmath.sqrt(num)
