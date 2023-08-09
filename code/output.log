@@ -1,0 +1,73 @@
+2023-08-07 10:48:52,274 - DEBUG - 计算平方根
+2023-08-07 10:48:55,127 - DEBUG - 复数的平方根：(1.9029767059950162+0.7882387605032136j) and (-1.9029767059950162-0.7882387605032136j)
+2023-08-07 10:48:55,128 - DEBUG - 实部的平方根：1.9029767059950162 and -1.9029767059950162
+2023-08-07 10:48:55,128 - DEBUG - 虚部的平方根：0.7882387605032136 and -0.7882387605032136
+2023-08-07 10:48:55,128 - DEBUG - 操作 B：初始化
+2023-08-07 10:48:55,128 - DEBUG - 操作 B 正在进行中...
+2023-08-07 10:48:55,128 - ERROR - 程序发生异常：division by zero
+Traceback (most recent call last):
+  File "/data/debug_log.py", line 41, in main
+    operation_B()
+  File "/data/debug_log.py", line 57, in operation_B
+    return 10 / 0
+           ~~~^~~
+ZeroDivisionError: division by zero
+2023-08-07 13:46:44,055 - DEBUG - 计算平方根
+2023-08-07 13:46:49,692 - DEBUG - 复数的平方根：(1.9029767059950162+0.7882387605032136j) and (-1.9029767059950162-0.7882387605032136j)
+2023-08-07 13:46:49,692 - DEBUG - 实部的平方根：1.9029767059950162 and -1.9029767059950162
+2023-08-07 13:46:49,692 - DEBUG - 虚部的平方根：0.7882387605032136 and -0.7882387605032136
+2023-08-07 13:46:49,693 - DEBUG - 操作 B：初始化
+2023-08-07 13:46:49,693 - DEBUG - 操作 B 正在进行中...
+2023-08-07 13:46:49,693 - ERROR - 程序发生异常：division by zero
+Traceback (most recent call last):
+  File "/data/debug_log.py", line 47, in main
+    operation_B()
+  File "/data/debug_log.py", line 63, in operation_B
+    return 10 / 0
+           ~~~^~~
+ZeroDivisionError: division by zero
+2023-08-07 14:42:16,931 - DEBUG - 文件：/data/debug_log.py
+2023-08-07 14:42:16,931 - DEBUG - 开始执行函数：main
+2023-08-07 14:48:07,918 - DEBUG - 文件：/data/debug.py
+2023-08-07 14:48:07,918 - DEBUG - 开始执行函数：main
+2023-08-07 14:48:11,529 - DEBUG - 复数的平方根：(3.29605234040343+1.365269581686682j) and (-3.29605234040343-1.365269581686682j)
+2023-08-07 14:48:11,529 - DEBUG - 实部的平方根：3.29605234040343 and -3.29605234040343
+2023-08-07 14:48:11,529 - DEBUG - 虚部的平方根：1.365269581686682 and -1.365269581686682
+2023-08-07 14:48:11,529 - DEBUG - 操作 B：初始化
+2023-08-07 14:48:11,530 - DEBUG - 操作 B 正在进行中...
+2023-08-07 14:48:11,530 - ERROR - 程序发生异常：division by zero
+Traceback (most recent call last):
+  File "/data/debug.py", line 44, in main
+    operation_B()
+  File "/data/debug.py", line 61, in operation_B
+    return 10 / 0
+           ~~~^~~
+ZeroDivisionError: division by zero
+2023-08-07 14:58:06,364 - DEBUG - 文件：E:\data\Work\Work_1_Year\2023\8月\code\debug_log.py
+2023-08-07 14:58:06,364 - DEBUG - 开始执行函数：main
+2023-08-07 14:58:09,412 - DEBUG - 复数的平方根：(3.29605234040343+1.365269581686682j) and (-3.29605234040343-1.365269581686682j)
+2023-08-07 14:58:09,413 - DEBUG - 实部的平方根：3.29605234040343 and -3.29605234040343
+2023-08-07 14:58:09,413 - DEBUG - 虚部的平方根：1.365269581686682 and -1.365269581686682
+2023-08-07 14:58:09,413 - DEBUG - 操作 B：初始化
+2023-08-07 14:58:09,414 - DEBUG - 操作 B 正在进行中...
+2023-08-07 14:58:09,414 - ERROR - 程序发生异常：division by zero
+Traceback (most recent call last):
+  File "E:\data\Work\Work_1_Year\2023\8月\code\debug_log.py", line 49, in main
+    operation_B()
+  File "E:\data\Work\Work_1_Year\2023\8月\code\debug_log.py", line 66, in operation_B
+    return 10 / 0
+           ~~~^~~
+ZeroDivisionError: division by zero
+2023-08-09 10:13:44,185 - DEBUG - 文件：E:\data\Work\Work_1_Year\2023\8月\code\debug_log.py
+2023-08-09 10:13:44,203 - DEBUG - 开始执行函数：main
+2023-08-09 10:13:44,225 - DEBUG - 复数的平方根：(3.0699232728030927+0.6514820802585842j) and (-3.0699232728030927-0.6514820802585842j)
+2023-08-09 10:13:44,225 - DEBUG - 实部的平方根：3.0699232728030927 and -3.0699232728030927
+2023-08-09 10:13:44,225 - DEBUG - 虚部的平方根：0.6514820802585842 and -0.6514820802585842
+2023-08-09 10:13:44,227 - ERROR - 程序发生异常：division by zero
+Traceback (most recent call last):
+  File "E:\data\Work\Work_1_Year\2023\8月\code\debug_log.py", line 53, in main
+    operation_B()
+  File "E:\data\Work\Work_1_Year\2023\8月\code\debug_log.py", line 68, in operation_B
+    return 10 / 0
+           ~~~^~~
+ZeroDivisionError: division by zero
