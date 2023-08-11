@@ -5,6 +5,8 @@ from tqdm import tqdm
 import configparser
 from input_validator import InputValidator
 
+DEBUG = False
+
 # 输入与验证
 def input_and_verification(validator):
     # 读取
@@ -22,8 +24,9 @@ def input_and_verification(validator):
 
     # 查询debug按钮信息
     validator.check_debug_switch()
+    DEBUG = validator.get_debug_info().get('debug_button')
     print("打印debug信息: " + str(validator.get_debug_info().get('debug_button')))
-    
+    print("全局: " + str(DEBUG))
     # 查询错误处理配置信息
     true_error_handling_config = validator.check_error_handling_config()
     print("错误处理配置信息: " + str(true_error_handling_config))
@@ -68,6 +71,7 @@ def quit_chroot():
 def main():
     input_validator = InputValidator()
     input_and_verification(input_validator)
+    print("全局: " + str(DEBUG))
 
 if __name__ == '__main__':
     main()

@@ -15,13 +15,25 @@ class InputValidator:
 
     #读取input.ini配置文件信息
     def read_config(self):
-        self.paths = {
-            'source_path': self.config.get('Paths', 'source_path'),
-            'target_path': self.config.get('Paths', 'target_path')
-        }
-        self.backup_info = {
-            'backup_name': self.config.get('Backup', 'backup_name')
-        }
+        # 读取 Paths 部分
+        if self.config.has_section('Paths'):
+            self.paths = {
+                'source_path': self.config.get('Paths', 'source_path'),
+                'target_path': self.config.get('Paths', 'target_path')
+            }
+        else:
+            print("未找到[Paths]章节，配置文件格式有误")
+            return False
+        
+        # 读取 Backup 部分
+        if self.config.has_section('Backup'):
+            self.backup_info = {
+                'backup_name': self.config.get('Backup', 'backup_name')
+            }
+        else:
+            print("未找到[Backup]章节，配置文件格式有误")
+            return False
+
         # 检查是否存在[ErrorHandling]部分
         if self.config.has_section('ErrorHandling'):
             umount_on_error = self.config.get('ErrorHandling', 'umount_on_error')
