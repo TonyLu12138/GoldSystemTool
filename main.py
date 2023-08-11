@@ -9,6 +9,7 @@ DEBUG = False
 
 # 输入与验证
 def input_and_verification(validator):
+    global DEBUG  # 声明要使用的全局变量 DEBUG
     # 读取
     validator.read_config()
     

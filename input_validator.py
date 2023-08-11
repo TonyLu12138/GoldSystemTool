@@ -89,7 +89,7 @@ class InputValidator:
             if os.path.exists(source_path_value):
                 print(f"源路径 '{source_path_value}' 存在，验证通过")
             else:
-                print(f"源路径 '{source_path_value}' 不存在，请检查配置项 'source_path' 中的路径")
+                print(f"源路径 '{source_path_value}' 不存在，请检查配置项'source_path'中的路径")
         else:
             print("未找到配置项 'source_path' 中的路径")
 
@@ -98,7 +98,7 @@ class InputValidator:
             if os.path.exists(target_path_value):
                 print(f"目标路径 '{target_path_value}' 存在，验证通过")
             else:
-                print(f"目标路径 '{target_path_value}' 不存在，请检查配置项 'target_path' 中的路径")
+                print(f"目标路径 '{target_path_value}' 不存在，请检查配置项'target_path'中的路径")
         else:
             print("未找到配置项 'target_path' 中的路径")
 
@@ -112,7 +112,7 @@ class InputValidator:
         elif config.has_section('debug'):
             # 将 [debug] 章节中的配置信息存储到self.debug_info中
             self.debug_info['debug_button'] = config.getboolean('debug', 'debug_button')
-            print("[debug] 章节中的 debug_button 配置项已存储到 self.debug_info 中")
+            print("[debug] 章节中的debug_button配置项已存储到self.debug_info中")
 
     def check_error_handling_config(self):
         if self.error_handling.get('umount_on_error'):
