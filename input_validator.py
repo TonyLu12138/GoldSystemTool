@@ -15,65 +15,75 @@ class InputValidator:
 
     #读取input.ini配置文件信息
     def read_config(self):
-        # 读取 Paths 部分
-        if self.config.has_section('Paths'):
-            self.paths = {
-                'source_path': self.config.get('Paths', 'source_path'),
-                'target_path': self.config.get('Paths', 'target_path')
-            }
-        else:
-            print("未找到[Paths]章节，配置文件格式有误")
-            return False
-        
-        # 读取 Backup 部分
-        if self.config.has_section('Backup'):
-            self.backup_info = {
-                'backup_name': self.config.get('Backup', 'backup_name')
-            }
-        else:
-            print("未找到[Backup]章节，配置文件格式有误")
-            return False
+        try:
+            # 读取 Paths 部分
+            if self.config.has_section('Paths'):
+                self.paths = {
+                    'source_path': self.config.get('Paths', 'source_path'),
+                    'target_path': self.config.get('Paths', 'target_path')
+                }
+            else:
+                print("未找到[Paths]章节，配置文件格式有误")
+                return False
+            
+            # 读取 Backup 部分
+            if self.config.has_section('Backup'):
+                self.backup_info = {
+                    'backup_name': self.config.get('Backup', 'backup_name')
+                }
+            else:
+                print("未找到[Backup]章节，配置文件格式有误")
+                return False
 
-        # 检查是否存在[ErrorHandling]部分
-        if self.config.has_section('ErrorHandling'):
-            umount_on_error = self.config.get('ErrorHandling', 'umount_on_error')
-            if umount_on_error.lower() == 'true':
-                self.error_handling = {
-                    'umount_on_error': True
-                }
-            elif umount_on_error.lower() == 'false':
-                self.error_handling = {
-                    'umount_on_error': False
-                }
+            # 检查是否存在[ErrorHandling]部分
+            if self.config.has_section('ErrorHandling'):
+                umount_on_error = self.config.get('ErrorHandling', 'umount_on_error')
+                if umount_on_error.lower() == 'true':
+                    self.error_handling = {
+                        'umount_on_error': True
+                    }
+                elif umount_on_error.lower() == 'false':
+                    self.error_handling = {
+                        'umount_on_error': False
+                    }
+                else:
+                    print("ErrorHandling配置中的umount_on_error不是布尔值")
+                    return False
             else:
-                print("ErrorHandling配置中的umount_on_error不是布尔值")
-                return False
-        else:
-            print("未找到[ErrorHandling]章节，将默认ErrorHandling配置为False")
-            self.error_handling = {
-                'umount_on_error' : False
-            }
-        # 检查是否存在[debug]部分
-        if self.config.has_section('debug'):
-            debug_button = self.config.get('debug', 'debug_button')
-            if debug_button.lower() == 'true':
-                self.debug_info = {
-                    'debug_button': True
+                print("未找到[ErrorHandling]章节，将默认ErrorHandling配置为False")
+                self.error_handling = {
+                    'umount_on_error' : False
                 }
-            elif debug_button.lower() == 'false':
-                self.debug_info = {
-                    'debug_button': False
-                }
-            else:
-                print("debug配置中的debug_button不是布尔值")
-                return False
+            # 检查是否存在[Debug]部分
+            if self.config.has_section('Debug'):
+                debug_button = self.config.get('Debug', 'debug_button')
+                if debug_button.lower() == 'true':
+                    self.debug_info = {
+                        'debug_button': True
+                    }
+                elif debug_button.lower() == 'false':
+                    self.debug_info = {
+                        'debug_button': False
+                    }
+                else:
+                    print("debug配置中的debug_button不是布尔值")
+                    return False
+        except configparser.NoSectionError as invalid_section_error:
+            print(f"填写错误的章节名，请重新填写: {invalid_section_error}")
+            return False
             
     #验证备份包名称有效性
     def validate_backup_name(self):
-        backup_name = self.backup_info['backup_name']
+        if 'backup_name' not in self.backup_info:
+            print("验证备份包名称有效性方法中，未找到备份包名称，请检查配置文件")
+            return False
+    
+        source_path_value = self.paths.get('source_path')
+    
         specified_backup_name = 'backup.tar.gz'  # 备份包名称
-        
-        if backup_name == specified_backup_name:
+        specified_backup_path = os.path.join(source_path_value, specified_backup_name)
+
+        if os.path.exists(specified_backup_path):
             return True
         else:
             return False
@@ -106,12 +116,9 @@ class InputValidator:
     def check_debug_switch(self):
         config = configparser.ConfigParser()
         config.read('input.ini')
-        # 如果debug的section不存在，那就把这个字典直接改成false
-        if not config.has_section('debug'):
-            self.debug_info = False
-        elif config.has_section('debug'):
+        if config.has_section('Debug'):
             # 将 [debug] 章节中的配置信息存储到self.debug_info中
-            self.debug_info['debug_button'] = config.getboolean('debug', 'debug_button')
+            self.debug_info['debug_button'] = config.getboolean('Debug', 'debug_button')
             print("[debug] 章节中的debug_button配置项已存储到self.debug_info中")
 
     def check_error_handling_config(self):
