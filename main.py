@@ -11,7 +11,7 @@ DEBUG = False
 def input_and_verification(validator):
     global DEBUG  # 声明要使用的全局变量 DEBUG
     # 读取
-    if not validator.read_config():
+    if str(validator.read_config()) == 'False':
         print("配置文件读取失败，程序中断")
         exit()
     validator.read_config()
@@ -37,12 +37,12 @@ def input_and_verification(validator):
     # return 
 
 # 磁盘分析与管理
-def manage_and_analyze_disks():
+def manage_and_analyze_disks(validator):
     # 指定目标盘
-    target_disk = 'sdc'
+    target_disk = validator.paths.get('target_path')
 
     # 创建目标盘分析类
-    target_disk_analyzer = TargetDiskAnalyzer(target_disk)
+    target_disk_analyzer = TargetDiskAnalyzer(target_disk, DEBUG)
 
     # 获取目标盘分区结构
     partition_structure = target_disk_analyzer.get_partition_structure()
@@ -96,7 +96,7 @@ def main():
     input_and_verification(input_validator)
     print("全局: " + str(DEBUG))
 
-    manage_and_analyze_disks()
+    manage_and_analyze_disks(input_validator)
 
 if __name__ == '__main__':
     main()
