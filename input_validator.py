@@ -78,15 +78,20 @@ class InputValidator:
             print("验证备份包名称有效性方法中，未找到备份包名称，请检查配置文件")
             return False
     
-        source_path_value = self.paths.get('source_path')
-    
-        specified_backup_name = 'backup.tar.gz'  # 备份包名称
-        specified_backup_path = os.path.join(source_path_value, specified_backup_name)
+        source_path = self.paths.get('source_path')
 
-        if os.path.exists(specified_backup_path):
-            return True
-        else:
-            return False
+        # 检查是否包含设备标识，例如 sda、sdb、sdc 等
+        if any(device in source_path for device in ['sda', 'sdb', 'sdc']):
+            source_path = source_path.replace('/dev/', '/mnt/')
+
+        specified_backup_name = 'backup.tar.gz'  # 备份包名称
+        
+        # 遍历整个目录，查找备份包
+        for root, dirs, files in os.walk(source_path):
+            if specified_backup_name in files:
+                return True
+        return False
+
 
     #验证设备路径的有效性
     def validate_device_path(self):
