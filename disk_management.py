@@ -7,12 +7,9 @@ class TargetDiskAnalyzer:
     def __init__(self, target_disk, debug):
         self.target_disk = target_disk
         self.task_logger = TaskLogger("DiskManagement")  # 创建任务日志记录器
-        self.debug = debug
-
-        if self.debug:
-            self.debug_logger = DebugLogger("DiskManagement", True)
-        else:
-            self.debug_logger = DebugLogger("DiskManagement", False)
+        print(f"这是DiskManagement的debug传入值 {debug}")
+        self.debug_logger = DebugLogger("DiskManagement")
+        self.debug_logger.set_debug(debug)
 
     def get_partition_structure(self):
         try:
