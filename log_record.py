@@ -12,10 +12,10 @@ class TaskLogger:
         formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
         # 输出到控制台
-        console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setLevel(logging.DEBUG)
-        console_handler.setFormatter(formatter)
-        self.logger.addHandler(console_handler)
+        #console_handler = logging.StreamHandler(sys.stdout)
+        #console_handler.setLevel(logging.DEBUG)
+        #console_handler.setFormatter(formatter)
+        #self.logger.addHandler(console_handler)
 
         # 输出到文件
         log_file = f"log.log"
@@ -40,7 +40,7 @@ class TaskLogger:
             raise ValueError(f"Invalid log level: {level}")
 
 class DebugLogger:
-    def __init__(self, task_name, debug_enabled):
+    def __init__(self, task_name, debug_enabled=False):
         self.logger = logging.getLogger(f"Debug_{task_name}")
         self.logger.setLevel(logging.DEBUG)
 
@@ -54,8 +54,8 @@ class DebugLogger:
         self.debug_enabled = debug_enabled  # Set initial debug state
 
     #传入一个true的bool才能使用debug操作记录
-    #def set_debug(self, enabled=True):
-    #    self.debug_enabled = enabled
+    def set_debug(self, enabled=True):
+        self.debug_enabled = enabled
 
     def log(self, message):
         if self.debug_enabled:
