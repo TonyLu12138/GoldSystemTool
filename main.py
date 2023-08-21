@@ -3,6 +3,7 @@ import cmath
 import logging
 from tqdm import tqdm
 import configparser
+from file_management import DirectoryFileManager, MountUnmountManager
 from input_validator import InputValidator
 from disk_management import TargetDiskAnalyzer
 DEBUG = False
@@ -60,8 +61,21 @@ def manage_and_analyze_disks(validator):
         print("无法确定目标盘根目录所在分区")
 
 # 临时路径创建与挂载
-def create_and_mount_paths():
-    return
+def create_and_mount_paths(validator):
+    # 创建临时目录
+    directory_manager = DirectoryFileManager()
+    if directory_manager.create_directory("/mnt", "source") and directory_manager.create_directory("/mnt", "target"):
+        print("临时目录创建成功")
+    else:
+        print("临时目录创建失败")
+
+    # 挂载源盘和目标盘
+    mount_manager = MountUnmountManager(validator, DEBUG)
+    if mount_manager.mount_source_path("/mnt/source") and mount_manager.mount_target_path("/mnt/target"):
+        print("源盘和目标盘挂载成功")
+    else:
+        print("源盘和目标盘挂载失败")
+
 
 # 文件与目录管理
 def manage_files_and_directories():
@@ -98,5 +112,6 @@ def main():
 
     manage_and_analyze_disks(input_validator)
 
+    create_and_mount_paths(input_validator)
 if __name__ == '__main__':
     main()
