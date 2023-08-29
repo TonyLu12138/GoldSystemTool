@@ -7,7 +7,7 @@ class TargetDiskAnalyzer:
     def __init__(self, target_disk, debug):
         self.target_disk = target_disk
         self.task_logger = TaskLogger("DiskManagement")  # 创建任务日志记录器
-        print(f"这是DiskManagement的debug传入值 {debug}")
+        # print(f"这是DiskManagement的debug传入值 {debug}")
         self.debug_logger = DebugLogger("DiskManagement")
         self.debug_logger.set_debug(debug)
 
@@ -37,20 +37,19 @@ class TargetDiskAnalyzer:
             print('partition_names' + str(partition_names))   #删除
             self.task_logger.log("DEBUG", 'partition_names' + str(partition_names))
             self.debug_logger.log(f"提取分区结构信息 {partition_names}。") #debug
-            previous_partition_name = None
+            
             # 逐个分区进行判断
             for partition_name in partition_names:
-                if partition_name == 'ubuntuvg1ubuntulv1':
-                    if previous_partition_name is not None:
-                        print(f"根目录所在分区：{previous_partition_name}")
-                        self.task_logger.log("INFO", f"根目录所在分区：{previous_partition_name}")
-                        self.debug_logger.log(f"输出根目录所在分区 {previous_partition_name}。") #debug
-                        return previous_partition_name
-                previous_partition_name = partition_name
+                if partition_name == 'sdd2':
+                    print(f"根目录所在分区：{partition_name}")
+                    self.task_logger.log("INFO", f"根目录所在分区：{partition_name}")
+                    self.debug_logger.log(f"输出根目录所在分区 /dev/{partition_name}。") #debug
+                    return f"/dev/{partition_name}"
+                
 
-            print("未找到包含逻辑卷 ubuntu--vg-ubuntu--lv 的根分区")
-            self.task_logger.log("WARNING", "未找到包含逻辑卷 ubuntu--vg-ubuntu--lv 的根分区")
-            self.debug_logger.log("未找到包含逻辑卷 ubuntu--vg-ubuntu--lv 的根分区") #debug
+            print("未找到sdd2 的根分区")
+            self.task_logger.log("WARNING", "未找到sdd2的根分区")
+            self.debug_logger.log("未找到sdd2的根分区") #debug
             return None
         except Exception as e:
             print(f"查找根目录分区时发生错误：{e}")
