@@ -3,18 +3,16 @@ import datetime
 import os
 import sys
 import subprocess
-from file_management import MountUnmountManager, TarExtractor
 
 from log_record import DebugLogger, TaskLogger
 
 class ErrorHandling:
-    def __init__(self, input_validator, logical_volume, debug_enabled=False):
+    def __init__(self, error_handling_bool, debug_logger):
         # 实例化任务日志记录器
         self.task_logger = TaskLogger("ErrorHandling")
-        self.debug_logger = DebugLogger("MountUnmountManager", debug_enabled)
-        self.input_validator = input_validator
-        self.mount_manager = MountUnmountManager(input_validator, logical_volume, debug_enabled)
-
+        self.debug_logger = debug_logger
+        self.error_handling_bool = error_handling_bool
+        
     def handle_next_step_failure(self, error_message, target_mount_point, source_mount_point):
         """
         处理无法执行下一步操作的问题
@@ -28,7 +26,7 @@ class ErrorHandling:
             stdout_and_stderr = completed_process.stdout + completed_process.stderr
 
             # 根据用户设定，决定是否 umount 相关目录
-            if self.input_validator.get_error_handling().get('umount_on_error'):
+            if self.error_handling_bool:
                 # 进行 umount 相关目录的操作
                 unmount_target_result = self.mount_manager.unmount_device(target_mount_point)
                 unmount_soucer_result = self.mount_manager.unmount_device(source_mount_point)
@@ -51,20 +49,34 @@ class ErrorHandling:
         self.task_logger.log("INFO", "程序结束")
         sys.exit(1)
 
+    # 为了防止循环调用的定义，就在这里再次写一遍解压方法
+    def extract_tar_gz(self, tar_gz_file, target_path):
+        try:
+            # 执行解压命令
+            command = f"sudo tar -xzpvf {tar_gz_file} -C {target_path} --numeric-owner"
+            subprocess.run(command, shell=True, check=True)
+
+            self.debug_logger.log(f"成功解压 {tar_gz_file} 到 {target_path}")
+            return True
+        except subprocess.CalledProcessError as e:
+            self.debug_logger.log(f"解压失败：{e}")
+            return False
+        finally:
+            self.debug_logger.log("")  # 输出一个空白行
+        
     def handle_extraction_failure(self, tar_gz_file, target_path):
         """
         处理解压失败的情况
         """
         # 记录错误信息到任务日志
         self.task_logger.log("ERROR", error_message)
-        tar_extractor = TarExtractor(debug_enabled=True)
 
         try:
             # 记录解压过程中的错误和异常情况到 log 日志中
             log_filename = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + "_unzip.log"
             log_filepath = f"/path/to/log/directory/{log_filename}"
             with open(log_filepath, "w") as log_file:
-                success = tar_extractor.extract_tar_gz(tar_gz_file, target_path)
+                success = self.extract_tar_gz(tar_gz_file, target_path)
                 if not success:
                     self.task_logger.log("ERROR", "解压失败")
 
@@ -77,7 +89,7 @@ class ErrorHandling:
             while retry_count < max_retries:
                 retry_count += 1
                 self.task_logger.log("INFO", f"正在尝试第 {retry_count} 次重试")
-                success = tar_extractor.extract_tar_gz(tar_gz_file, target_path)
+                success = self.extract_tar_gz(tar_gz_file, target_path)
                 if success:
                     self.task_logger.log("INFO", "解压成功")
                     return True
