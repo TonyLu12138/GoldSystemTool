@@ -2,122 +2,157 @@
 import os
 import subprocess
 import time
+from base import Base
 from error_handling import ErrorHandling
-from log_record import DebugLogger
+from log_record import DebugLogger, TaskLogger
 from input_validator import InputValidator
 from process import ProgressBar
 
 # 挂在和卸载类
 class MountUnmountManager:
-    def __init__(self, input_validator, debug_enabled=False):
-        self.input_validator = input_validator
-        self.error_handling = ErrorHandling()
-        self.debug_logger = DebugLogger("MountUnmountManager", debug_enabled)
+    def __init__(self, source_path, logical_volume, error_handling , debug_logger):
+        self.logical_volume = logical_volume
+        self.source_path = source_path
+        self.debug_logger = debug_logger
+        self.base = Base(debug_logger)
+        self.error_handling = error_handling
+        self.task_logger = TaskLogger("MountUnmountManager")
         self.target_mount_point = ""
         self.source_mount_point = ""
 
     #输入需要的挂载点，就是要先创建对应的目录
-    def mount_target_path(self, mount_point, max_retries=4, retry_delay=5):
-        target_path = "/dev/ubuntu-vg1/ubuntu-lv1" # 修改 目标盘逻辑卷
+    def mount_target_path(self, mount_point):
+        self.debug_logger.log("执行挂载目标盘方法")
+        print("执行挂载目标盘方法")
+        target_path = self.logical_volume # 修改 目标盘逻辑卷
+        self.task_logger.log("INFO", f"目标路径：{target_path}")
+        buffer = False
+        # 使用ProgressBar显示挂载进度
+        progress_bar = ProgressBar(1)
         if target_path:
-
-            # 使用ProgressBar显示挂载进度
-            progress_bar = ProgressBar()
-
-            for _ in range(max_retries):
-                self.debug_logger.log(f"开始挂载 target_path 到 {mount_point}")
-                result_bool, result_string = self.mount_path(target_path, mount_point)
-                if result_bool:
-                    self.debug_logger.log("target_path 挂载成功")
-                    self.target_mount_point = result_string
-                    return True
-                else:
-                    self.debug_logger.log("target_path 挂载失败，将在 {retry_delay} 秒后重试")
-                    # 让程序暂停retry_delay秒
-                    time.sleep(retry_delay)
-                progress_bar.update()  # 更新进度条
-
+            
+            command = f"sudo mount {target_path} {mount_point}"
+            print(f"挂载目标盘方法de zhiling {command}")
+            result = self.base.com(command).strip()
+            print(result, f"变量类型 {type(result)}")
+            if "失败" not in str(result):
+                buffer = True
+                progress_bar.update()
+                self.debug_logger.log("挂载目标盘完成")
+                print(f"挂载目标盘完成")
+            else:
+                for i in range(3):
+                    result = self.base.com(command).strip()
+                    if "失败" in str(result):
+                        buffer = True
+                        progress_bar.update()
+                        print(f"第{i}次尝试，挂载目标盘完成")
+                        break
+            if buffer is False:
+                self.error_handling.check_execution_result("多次挂载失败，进入错误处理") # 修改
+            self.debug_logger.log("")
             progress_bar.close()  # 关闭进度条
-
-            self.debug_logger.log("多次挂载失败，进入错误处理")
-            self.error_handling.check_execution_result("多次挂载失败，进入错误处理")   # 修改
-            return False
         else:
+            self.task_logger.log("ERROR", f"未找到配置项 'target_path' 中的路径")
             self.debug_logger.log("未找到配置项 'target_path' 中的路径")
-            return False
-
-    def mount_source_path(self, mount_point, max_retries=4, retry_delay=5):
-        source_path = self.input_validator.get_paths().get('source_path')
-        if source_path:
-
-            # 使用ProgressBar显示挂载进度
-            progress_bar = ProgressBar()
-
-            for _ in range(max_retries):
-                self.debug_logger.log(f"开始挂载 source_path 到 {mount_point}")
-                result_bool, result_string = self.mount_path(source_path, mount_point)
-                if result_bool:
-                    self.debug_logger.log("source_path 挂载成功")
-                    self.source_mount_point = result_string
-                    return True
-                else:
-                    self.debug_logger.log("source_path 挂载失败，将在 {retry_delay} 秒后重试")
-                    # 让程序暂停retry_delay秒
-                    time.sleep(retry_delay)
-                progress_bar.update()  # 更新进度条
-
+            self.debug_logger.log("")
             progress_bar.close()  # 关闭进度条
-            self.debug_logger.log("多次挂载失败，进入错误处理")
-            self.error_handling.check_execution_result("多次挂载失败，进入错误处理") # 修改
-            return False
-        else:
-            self.debug_logger.log("未找到配置项 'source_path' 中的路径")
             return False
 
-    def mount_path(self, path, mount_point):
-        try:
-            command = f"sudo mount {path} {mount_point}"
-            self.debug_logger.log(f"执行挂载命令：{command}")
-            subprocess.run(command, shell=True, check=True)
-            self.debug_logger.log(f"已成功挂载 {path} 到 {mount_point}")
-            return True, mount_point
-        except subprocess.CalledProcessError as e:
-            self.debug_logger.log(f"挂载失败：{e}")
-            return False, mount_point
+    def mount_source_path(self, mount_point):
+        self.debug_logger.log("执行挂载源盘方法")
+        print("执行挂载源盘方法")
+        #source_path = self.input_validator.get_paths().get('source_path')
+        self.task_logger.log("INFO", f"源盘路径：{self.source_path}")
+        buffer = False
+        if self.source_path:
+            # 使用ProgressBar显示挂载进度
+            progress_bar = ProgressBar(1)
+            command = f"sudo mount {self.source_path} {mount_point}"
+            result = self.base.com(command).strip()
+            print(result, f"变量类型 {type(result)}")
+            if "失败" not in str(result):
+                buffer = True
+                progress_bar.update()
+                self.debug_logger.log("挂载源盘完成")
+                print(f"挂载源盘完成")
+            else:
+                for i in range(3):
+                    result = self.base.com(command).strip()
+                    if "失败" in str(result):
+                        buffer = True
+                        progress_bar.update()
+                        print(f"第{i}次尝试，挂载源盘完成")
+                        break
+            if buffer is False:
+                self.error_handling.check_execution_result("多次挂载失败，进入错误处理") # 修改
+            self.debug_logger.log("")
+            progress_bar.close()  # 关闭进度条
+        else:
+            self.task_logger.log("ERROR", f"未找到配置项 'source_path' 中的路径")
+            self.debug_logger.log("未找到配置项 'source_path' 中的路径")
+            self.debug_logger.log("")
+            progress_bar.close()  # 关闭进度条
+            return False
 
     def unmount_device(self, mount_point):
+        # 使用ProgressBar显示进度条
+        progress_bar = ProgressBar(1)
         try:
-            command = f"sudo umount {mount_point}"
-            self.debug_logger.log(f"执行卸载命令：{command}")
-            subprocess.run(command, shell=True, check=True)
-            self.debug_logger.log(f"已成功卸载 {mount_point}")
+            self.task_logger.log("INFO", f"执行卸载{mount_point}方法")
+            self.debug_logger.log(f"执行卸载{mount_point}方法")
+            command = f"sudo umount -l {mount_point}"
+            self.base.com(command).strip()
+            progress_bar.update()
             return True
         except subprocess.CalledProcessError as e:
+            self.task_logger.log("ERROR", f"卸载失败：{e}")
             self.debug_logger.log(f"卸载失败：{e}")
             self.error_handling.handle_umount_failure(mount_point) # 错误处理
             return False
+        finally:
+            progress_bar.close()  # 关闭进度条
+            self.debug_logger.log("")  # 输出一个空白行
 
     def bind_temporary_directory(self, source_directory, target_directory):
+        # 使用ProgressBar显示进度条
+        progress_bar = ProgressBar(1)
         try:
+            self.task_logger.log("INFO", f"执行绑定{target_directory}方法")
+            self.debug_logger.log(f"开始执行绑定{target_directory}方法")
             command = f"sudo mount --bind {source_directory} {target_directory}"
-            self.debug_logger.log(f"执行绑定临时目录命令：{command}")
-            subprocess.run(command, shell=True, check=True)
-            self.debug_logger.log(f"已成功将 {source_directory} 绑定到 {target_directory}")
+            self.base.com(command)
+            # subprocess.run(command, shell=True, check=True)
+            print("绑定完成")
+            progress_bar.update()
             return True
         except subprocess.CalledProcessError as e:
+            self.task_logger.log("ERROR", f"绑定临时目录失败：{e}")
             self.debug_logger.log(f"绑定临时目录失败：{e}")
+            print("绑定失败")
             return False
-        
+        finally:
+            progress_bar.close()  # 关闭进度条
+            self.debug_logger.log("")  # 输出一个空白行
+
     def unbind_temporary_directory(self, target_directory):
+        # 使用ProgressBar显示进度条
+        progress_bar = ProgressBar(1)
         try:
+            self.task_logger.log("INFO", f"执行解绑{target_directory}方法")
+            self.debug_logger.log(f"开始执行解绑{target_directory}方法")
             command = f"sudo umount {target_directory}"
-            self.debug_logger.log(f"执行解绑临时目录命令：{command}")
-            subprocess.run(command, shell=True, check=True)
-            self.debug_logger.log(f"已成功解绑 {target_directory}")
+            self.base.com(command)
+            #subprocess.run(command, shell=True, check=True)
+            progress_bar.update()
             return True
         except subprocess.CalledProcessError as e:
+            self.task_logger.log("ERROR", f"解绑临时目录失败：{e}")
             self.debug_logger.log(f"解绑临时目录失败：{e}")
             return False
+        finally:
+            progress_bar.close()  # 关闭进度条
+            self.debug_logger.log("")  # 输出一个空白行
 
     # 返回目标盘挂载路径
     def get_target_mount_point(self):
@@ -133,133 +168,159 @@ class MountUnmountManager:
 # 删除也同理。
 
 class DirectoryFileManager:
-    def __init__(self):
-        pass
+    def __init__(self, debug_logger):
+        self.task_logger = TaskLogger("DirectoryFileManager")
+        self.debug_logger = debug_logger
+        self.base = Base(debug_logger)
 
+    # 创建目录
     def create_directory(self, path, dir_name):
         # 使用ProgressBar显示创建目录进度
-        progress_bar = ProgressBar()
+        progress_bar = ProgressBar(1)
         try:
-            full_path = os.path.join(path, dir_name)
-            sudo_command = f"sudo mkdir -p {full_path}"
-            subprocess.run(sudo_command, shell=True, check=True)
-            if os.path.exists(full_path):
+            self.task_logger.log("INFO", f"执行创建目录 {path}{dir_name} 方法")
+            self.debug_logger.log(f"执行创建目录 {path}{dir_name} 方法")
+            sudo_command = f"sudo mkdir -p {path}{dir_name}"
+            self.base.com(sudo_command)
+            if self.base.check_path(f"{path}{dir_name}"):
+                print(f"创建 {path}{dir_name} 成功")
+                progress_bar.update()
                 return True
             else:
+                print(f"创建 {path}{dir_name} 失败")
+                self.task_logger.log("WARNING", f"创建目录 {path}{dir_name} 失败")
                 return False
         except subprocess.CalledProcessError as e:
             print(f"创建目录失败：{e}")
+            self.task_logger.log("ERROR", f"创建目录失败：{e}")
+            self.debug_logger.log(f"创建目录失败：{e}")
             return False
         finally:
             progress_bar.close()  # 关闭进度条
+            self.debug_logger.log("")  # 输出一个空白行
 
+    # 删除目录
     def delete_path(self, path):
         # 使用ProgressBar显示创建目录进度
-        progress_bar = ProgressBar()
+        progress_bar = ProgressBar(1)
         try:
-            if os.path.exists(path):
+            self.task_logger.log("INFO", f"执行删除 {path} 方法")
+            self.debug_logger.log(f"开始删除 {path} ")
+
+            if self.base.check_path(path):
                 sudo_command = f"sudo rm -rf {path}/*"
-                subprocess.run(sudo_command, shell=True, check=True)
-                if not os.path.exists(path):
+                self.base.com(sudo_command).strip()
+                print("目标盘挂载路径已清空")
+                if not self.base.check_path(path):
+                    progress_bar.update()
                     return True
                 else:
+                    self.task_logger.log("WARNING", f"删除 {path} 失败")
                     return False
             else:
+                print("无法清空目标盘挂载路径")
+                self.task_logger.log("ERROR", f"删除路径失败，路径不存在")
+                self.debug_logger.log(f"删除路径失败，路径不存在")
                 return False
         except subprocess.CalledProcessError as e:
             print(f"删除路径失败：{e}")
+            self.debug_logger.log(f"删除路径失败：{e}")
             return False
         finally:
             progress_bar.close()  # 关闭进度条
+            self.debug_logger.log("")  # 输出一个空白行
         
 # 解压类
 class TarExtractor:
-    def __init__(self, debug_enabled=False):
-        self.debug_logger = DebugLogger("TarExtractor", debug_enabled)
+    def __init__(self, error_handling, debug_logger):
+        self.task_logger = TaskLogger("TarExtractor")
+        self.debug_logger = debug_logger
+        self.base = Base(debug_logger)
+        self.error_handling = error_handling
 
     def extract_tar_gz(self, tar_gz_file, target_path):
+        print("开始解压备份包")
         # 使用ProgressBar显示创建目录进度
-        progress_bar = ProgressBar()
+        progress_bar = ProgressBar(1)
+        # 记录开始时间
+        start_time = time.time()
         try:
+            self.task_logger.log("INFO", f"执行解压 {tar_gz_file} 方法")
             self.debug_logger.log(f"开始解压 {tar_gz_file} 到 {target_path}")
-
+            
+            if self.base.check_path(tar_gz_file):
             # 执行解压命令
-            command = f"sudo tar -xzpvf {tar_gz_file} -C {target_path} --numeric-owner"
-            self.debug_logger.log(f"执行解压命令：{command}")
-            subprocess.run(command, shell=True, check=True)
-
-            self.debug_logger.log(f"成功解压 {tar_gz_file} 到 {target_path}")
-            return True
+                command = f"sudo tar -xzpvf {tar_gz_file} -C {target_path} --numeric-owner"
+                self.base.com(command)
+                # subprocess.run(command, shell=True, check=True)
+                progress_bar.update()
+                print("备份包已解压到目标盘挂载点")
+                return True
+            else:
+                print("无法解压备份包到目标盘挂载点")
+                self.error_handling.handle_extraction_failure(tar_gz_file, target_path)
+        
         except subprocess.CalledProcessError as e:
+            self.task_logger.log("ERROR", f"解压失败：{e}")
             self.debug_logger.log(f"解压失败：{e}")
             return False
         finally:
+            # 记录结束时间
+            end_time = time.time()
+            # 计算经过的时间
+            elapsed_time = end_time - start_time
+            # 打印经过的时间
+            print(f"经过的时间（秒）：{elapsed_time}")
             progress_bar.close()  # 关闭进度条
+            self.debug_logger.log("")  # 输出一个空白行
         
 # 安装类
 class InstallationManager:
-    def __init__(self, debug_enabled=False):
-        self.debug_logger = DebugLogger("InstallationManager", debug_enabled)
+    def __init__(self, debug_logger):
+        self.task_logger = TaskLogger("InstallationManager")
+        self.debug_logger = debug_logger
+        self.base = Base(debug_logger)
 
-    def enter_chroot_environment(self, target_mount_point):
+    def install_packages_and_grub(self, target_mount_point, disk_path):
         # 使用ProgressBar显示创建目录进度
-        progress_bar = ProgressBar()
+        progress_bar = ProgressBar(1)
         try:
-            command = f"sudo chroot {target_mount_point}"
-            self.debug_logger.log(f"进入chroot环境，执行命令：{command}")
-            subprocess.run(command, shell=True, check=True)
+            self.task_logger.log("INFO", f"disk_path: {disk_path}")
+            self.debug_logger.log(f"disk_path: {disk_path}")
 
-            # 修改 
+            print(f"disk_path: {disk_path}")
+            commands = [
+                "pwd",
+                "sudo apt update",
+                "apt install sudo",
+                "sudo apt install grub2-common grub-pc-bin",
+                f"sudo grub-install --recheck --no-floppy {disk_path}",
+                "update-initramfs -u",
+                "update-grub",
+                "exit"
+            ]
 
+            combined_command = " && ".join(commands)
+            command = f"sudo chroot {target_mount_point} /bin/bash -c 2> /dev/null '{combined_command}' --no-stdio" 
 
-            self.debug_logger.log("成功进入chroot环境")
-            return True
+            completed_process = self.base.com(command)
+            output_lines = completed_process.split('\n')
+
+            if len(output_lines) > 0 and output_lines[0] == "/":
+                print("已成功在chroot环境中安装软件包和grub")
+                progress_bar.update()
+                self.debug_logger.log("已成功在chroot环境中安装软件包和grub")
+                return True
+            else:
+                print("未能进入chroot环境或软件包安装和grub安装失败")
+                self.task_logger.log("WARNING", f"无法进入chroot环境或无法安装相关软件")
+                self.debug_logger.log("未能进入chroot环境或软件包安装和grub安装失败")
+                return False
         except subprocess.CalledProcessError as e:
-            self.debug_logger.log(f"进入chroot环境失败：{e}")
+            print(f"软件包安装和grub安装失败：{e}")
+            self.task_logger.log("ERROR", f"软件包安装和grub安装失败：{e}")
+            self.debug_logger.log(f"软件包安装和grub安装失败：{e}")
             return False
         finally:
             progress_bar.close()  # 关闭进度条
-
-    def exit_chroot_environment(self):
-        # 使用ProgressBar显示创建目录进度
-        progress_bar = ProgressBar()
-        try:
-            self.debug_logger.log("退出chroot环境")
-            subprocess.run("exit", shell=True, check=True)
-            self.debug_logger.log("成功退出chroot环境")
-            return True
-        except subprocess.CalledProcessError as e:
-            self.debug_logger.log(f"退出chroot环境失败：{e}")
-            return False
-        finally:
-            progress_bar.close()  # 关闭进度条
-
-    def install_packages(self):
-        # 使用ProgressBar显示创建目录进度
-        progress_bar = ProgressBar()
-        try:
-            command = "sudo apt install grub2-common grub-pc-bin"
-            self.debug_logger.log(f"在chroot环境内安装软件包，执行命令：{command}")
-            subprocess.run(command, shell=True, check=True)
-            self.debug_logger.log("软件包安装成功")
-            return True
-        except subprocess.CalledProcessError as e:
-            self.debug_logger.log(f"软件包安装失败：{e}")
-            return False
-        finally:
-            progress_bar.close()  # 关闭进度条
-
-    def install_grub_to_disk(self, disk_path):
-        # 使用ProgressBar显示创建目录进度
-        progress_bar = ProgressBar()
-        try:
-            command = f"sudo grub-install --recheck --no-floppy {disk_path}"
-            self.debug_logger.log(f"在chroot环境内安装grub到硬盘，执行命令：{command}")
-            subprocess.run(command, shell=True, check=True)
-            self.debug_logger.log("grub安装成功")
-            return True
-        except subprocess.CalledProcessError as e:
-            self.debug_logger.log(f"grub安装失败：{e}")
-            return False
-        finally:
-            progress_bar.close()  # 关闭进度条
+            self.debug_logger.log("")  # 输出一个空白行
