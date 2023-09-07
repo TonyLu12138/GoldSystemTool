@@ -1,7 +1,9 @@
 #! /usr/bin/env python3
 import configparser
 import os
-from log_record import TaskLogger, DebugLogger  # 导入TaskLogger类
+from base import Base
+from log_record import TaskLogger, DebugLogger
+from process import ProgressBar  # 导入TaskLogger类
 
 class InputValidator:
     def __init__(self, config_file='input.ini'):
@@ -26,6 +28,7 @@ class InputValidator:
                     'source_path': self.config.get('Paths', 'source_path'),
                     'target_path': self.config.get('Paths', 'target_path')
                 }
+                print(f"读取paths部分：{self.paths}")
                 self.task_logger.log("INFO", f"获取路径信息: {self.paths}")
             else:
                 print("未找到[Paths]章节，配置文件格式有误")
@@ -88,7 +91,7 @@ class InputValidator:
             return False
             
     #验证备份包名称有效性
-    def validate_backup_name(self):
+    def validate_backup_name(self, source_mount_point):
         self.task_logger.log("INFO",f"执行验证备份包名称有效性方法")
         self.debug_logger.log(f"执行验证备份包名称有效性方法") #debug
         if 'backup_name' not in self.backup_info:
@@ -96,40 +99,53 @@ class InputValidator:
             print("验证备份包名称有效性方法中，未找到备份包名称，请检查配置文件")
             return False
     
-        source_path = self.paths.get('source_path')
-
-        # 检查是否包含设备标识，例如 sda、sdb、sdc 等
-        if any(device in source_path for device in ['sda', 'sdb', 'sdc']):
-            self.debug_logger.log(f"设置磁盘分区挂载点")
-            source_path = source_path.replace('/dev/', '/mnt/')
-
+        source_path = source_mount_point
+        
         specified_backup_name = self.backup_info.get('backup_name')  # 备份包名称
-        #print(f"备份包名字是这个吗：{specified_backup_name}")
+        print(f"备份包名字是这个吗：{specified_backup_name}")
         self.debug_logger.log(f"获取备份包名称 {specified_backup_name}") #debug
+
+        # 使用ProgressBar显示进度条
+        progress_bar = ProgressBar(1)
 
         # 遍历整个目录，查找备份包
         for root, dirs, files in os.walk(source_path):
+            print(f"当前目录：{root}")  # 输出当前目录，用于调试
+            print(f"文件列表：{files}")  # 输出文件列表，用于调试
+
             if specified_backup_name in files:
                 self.debug_logger.log(f"查找备份包成功") #debug
+                progress_bar.update()  # 更新进度条
+                progress_bar.close()  # 关闭进度条
                 return True
-        self.debug_logger.log(f"查找备份包失败") #debug
+            self.debug_logger.log(f"查找备份包失败") #debug
+            
+        progress_bar.close()  # 关闭进度条
+        self.debug_logger.log("")  # 输出一个空白行
         return False
-
 
     #验证设备路径的有效性
     def validate_device_path(self):
+        base = Base(self.get_debug_object())
         self.task_logger.log("INFO",f"执行验证设备路径的有效性方法")
         self.debug_logger.log(f"执行验证设备路径的有效性方法") #debug
         # 获取字典里的信息
         source_path_value = self.paths.get('source_path')
         target_path_value = self.paths.get('target_path')
         self.debug_logger.log(f"获取字典信息 source_path_value: {source_path_value}，target_path_value: {target_path_value}") #debug
+        
+        # 使用ProgressBar显示进度条
+        progress_bar = ProgressBar(2)
+        
         # 验证源路径
         if source_path_value:
-            if os.path.exists(source_path_value):
+            if base.check_path(source_path_value):
                 self.debug_logger.log(f"源路径 '{source_path_value}' 存在，验证通过") #debug
+                self.task_logger.log("INFO", f"源路径 '{source_path_value}' 存在，验证通过")
                 print(f"源路径 '{source_path_value}' 存在，验证通过")
+                progress_bar.update()
             else:
+                self.task_logger.log("ERROR",f"源路径 '{source_path_value}' 不存在")
                 self.debug_logger.log(f"源路径 '{source_path_value}' 不存在，验证失败") #debug
                 print(f"源路径 '{source_path_value}' 不存在，请检查配置项'source_path'中的路径")
         else:
@@ -138,22 +154,41 @@ class InputValidator:
 
         # 验证目标路径
         if target_path_value:
-            if os.path.exists(target_path_value):
+            if base.check_path(target_path_value):
+                self.debug_logger.log(f"目标路径 '{target_path_value}' 存在，验证通过")
+                self.task_logger.log("INFO", f"目标路径 '{target_path_value}' 存在，验证通过")
                 print(f"目标路径 '{target_path_value}' 存在，验证通过")
+                progress_bar.update()
             else:
+                self.task_logger.log("ERROR",f"目标路径 '{target_path_value}' 不存在")
+                self.debug_logger.log(f"目标路径 '{target_path_value}' 不存在，请检查配置项'target_path'中的路径")
                 print(f"目标路径 '{target_path_value}' 不存在，请检查配置项'target_path'中的路径")
         else:
+            self.debug_logger.log(f"未找到配置项 'target_path' 中的路径")
             print("未找到配置项 'target_path' 中的路径")
+
+        progress_bar.close()  # 关闭进度条
+        self.debug_logger.log("")  # 输出一个空白行
 
     # 验证debug按钮
     def check_debug_switch(self):
+
         self.debug_logger.log(f"执行验证debug按钮方法") #debug
+
+        # 使用ProgressBar显示进度条
+        progress_bar = ProgressBar(1)
+
         config = configparser.ConfigParser()
         config.read('input.ini')
         if config.has_section('Debug'):
             # 将 [debug] 章节中的配置信息存储到self.debug_info中
             self.debug_info['debug_button'] = config.getboolean('Debug', 'debug_button')
+            self.task_logger.log("INFO", f"获取[debug] 章节中的信息: {self.debug_info['debug_button']}")
+            self.debug_logger.log("[debug] 章节中的debug_button配置项已存储到self.debug_info中") #debug
             print("[debug] 章节中的debug_button配置项已存储到self.debug_info中")
+            progress_bar.update()
+        progress_bar.close()  # 关闭进度条
+        self.debug_logger.log("")  # 输出一个空白行
 
     def check_error_handling_config(self):
         if self.error_handling.get('umount_on_error'):
@@ -177,3 +212,5 @@ class InputValidator:
     def get_debug_info(self):
         return self.debug_info
         
+    def get_debug_object(self):
+        return self.debug_logger
