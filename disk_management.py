@@ -2,14 +2,13 @@
 import os
 import re
 from base import Base
-from log_record import TaskLogger, DebugLogger
-from process import ProgressBar  # 导入TaskLogger类
+from process import ProgressBar  
 
 class TargetDiskAnalyzer:
-    def __init__(self, target_disk, debug_logger):
+    def __init__(self, target_disk, task_logger, debug_logger):
         self.target_disk = target_disk
-        self.base = Base(debug_logger)
-        self.task_logger = TaskLogger("DiskManagement")  # 创建任务日志记录器
+        self.base = Base(task_logger, debug_logger)
+        self.task_logger = task_logger  # 创建任务日志记录器
         # print(f"这是DiskManagement的debug传入值 {debug}")
         self.debug_logger = debug_logger
         # self.debug_logger.set_debug(debug)
