@@ -3,20 +3,17 @@ import os
 import subprocess
 import time
 from base import Base
-from error_handling import ErrorHandling
-from log_record import DebugLogger, TaskLogger
-from input_validator import InputValidator
 from process import ProgressBar
 
 # 挂在和卸载类
 class MountUnmountManager:
-    def __init__(self, source_path, logical_volume, error_handling , debug_logger):
+    def __init__(self, source_path, logical_volume, error_handling , task_logger, debug_logger):
         self.logical_volume = logical_volume
         self.source_path = source_path
+        self.task_logger = task_logger
         self.debug_logger = debug_logger
-        self.base = Base(debug_logger)
+        self.base = Base(task_logger, debug_logger)
         self.error_handling = error_handling
-        self.task_logger = TaskLogger("MountUnmountManager")
         self.target_mount_point = ""
         self.source_mount_point = ""
 
@@ -168,10 +165,10 @@ class MountUnmountManager:
 # 删除也同理。
 
 class DirectoryFileManager:
-    def __init__(self, debug_logger):
-        self.task_logger = TaskLogger("DirectoryFileManager")
+    def __init__(self, task_logger, debug_logger):
+        self.task_logger = task_logger
         self.debug_logger = debug_logger
-        self.base = Base(debug_logger)
+        self.base = Base(task_logger, debug_logger)
 
     # 创建目录
     def create_directory(self, path, dir_name):
@@ -232,10 +229,10 @@ class DirectoryFileManager:
         
 # 解压类
 class TarExtractor:
-    def __init__(self, error_handling, debug_logger):
-        self.task_logger = TaskLogger("TarExtractor")
+    def __init__(self, error_handling, task_logger, debug_logger):
+        self.task_logger = task_logger
         self.debug_logger = debug_logger
-        self.base = Base(debug_logger)
+        self.base = Base(task_logger, debug_logger)
         self.error_handling = error_handling
 
     def extract_tar_gz(self, tar_gz_file, target_path):
@@ -276,10 +273,10 @@ class TarExtractor:
         
 # 安装类
 class InstallationManager:
-    def __init__(self, debug_logger):
-        self.task_logger = TaskLogger("InstallationManager")
+    def __init__(self, task_logger, debug_logger):
+        self.task_logger = task_logger
         self.debug_logger = debug_logger
-        self.base = Base(debug_logger)
+        self.base = Base(task_logger, debug_logger)
 
     def install_packages_and_grub(self, target_mount_point, disk_path):
         # 使用ProgressBar显示创建目录进度
