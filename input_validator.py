@@ -126,7 +126,7 @@ class InputValidator:
 
     #验证设备路径的有效性
     def validate_device_path(self):
-        base = Base(self.get_debug_object())
+        base = Base(self.get_log_object(), self.get_debug_object())
         self.task_logger.log("INFO",f"执行验证设备路径的有效性方法")
         self.debug_logger.log(f"执行验证设备路径的有效性方法") #debug
         # 获取字典里的信息
@@ -212,5 +212,8 @@ class InputValidator:
     def get_debug_info(self):
         return self.debug_info
         
+    def get_log_object(self):
+        return self.task_logger
+    
     def get_debug_object(self):
         return self.debug_logger
