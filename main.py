@@ -1,16 +1,10 @@
 #! /usr/bin/env python3
-import cmath
-import logging
 import os
-import subprocess
-from tqdm import tqdm
-import configparser
 from configuration_system_file import SystemConfigModifier
 from error_handling import ErrorHandling
 from file_management import DirectoryFileManager, InstallationManager, MountUnmountManager, TarExtractor
 from input_validator import InputValidator
 from disk_management import TargetDiskAnalyzer
-from log_record import DebugLogger
 
 DEBUG = False
 logical_volume = ""
@@ -41,13 +35,13 @@ def input_and_verification(validator):
     # return 
 
 # 磁盘分析与管理
-def manage_and_analyze_disks(validator, debug_logger):
+def manage_and_analyze_disks(validator, task_logger, debug_logger):
     global logical_volume
     # 指定目标盘
     target_disk = validator.paths.get('target_path')
 
     # 创建目标盘分析类
-    target_disk_analyzer = TargetDiskAnalyzer(target_disk, debug_logger)
+    target_disk_analyzer = TargetDiskAnalyzer(target_disk, task_logger, debug_logger)
 
     # 获取目标盘分区结构
     partition_structure = target_disk_analyzer.get_partition_structure()
@@ -96,8 +90,8 @@ def create_file(directory_manager):
     # print("创建结束")
 
 # 修改系统配置文件
-def modifying_configuration_file(debug_logger):
-    systemconfigmodifier = SystemConfigModifier(target_mount_point, logical_volume, debug_logger)
+def modifying_configuration_file(task_logger, debug_logger):
+    systemconfigmodifier = SystemConfigModifier(target_mount_point, logical_volume, task_logger, debug_logger)
     UUID = systemconfigmodifier.get_root_partition_uuid()
 
     print(f"打印出UUID {UUID}")
@@ -164,17 +158,18 @@ def main():
     # 获取备份包名称
     backup = input_validator.get_backup_info().get('backup_name')
 
+    task_logger = input_validator.get_log_object()
     debug_logger = input_validator.get_debug_object()
     
-    error_handling = ErrorHandling(error_handling_bool, debug_logger)
+    error_handling = ErrorHandling(error_handling_bool, task_logger, debug_logger)
     
-    directory_manager = DirectoryFileManager(debug_logger) 
-    tar_extractor = TarExtractor(error_handling, debug_logger)
-    installation_manager = InstallationManager(debug_logger)
+    directory_manager = DirectoryFileManager(task_logger, debug_logger) 
+    tar_extractor = TarExtractor(error_handling, task_logger, debug_logger)
+    installation_manager = InstallationManager(task_logger, debug_logger)
     
     # 磁盘分析与管理
-    manage_and_analyze_disks(input_validator, debug_logger)
-    mount_manager = MountUnmountManager(source_path, logical_volume, error_handling, debug_logger)
+    manage_and_analyze_disks(input_validator, task_logger, debug_logger)
+    mount_manager = MountUnmountManager(source_path, logical_volume, error_handling, task_logger, debug_logger)
 
     # 创建对应文件夹，挂载文件
     create_and_mount_paths(directory_manager, mount_manager)
@@ -193,7 +188,7 @@ def main():
     create_file(directory_manager)
 
     # 修改系统配置文件
-    modifying_configuration_file(debug_logger)
+    modifying_configuration_file(task_logger, debug_logger)
 
     # 绑定文件路径
     bind_file_path(mount_manager)
