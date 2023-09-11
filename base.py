@@ -3,13 +3,12 @@
 
 import os
 import subprocess
-from log_record import DebugLogger, TaskLogger
 
 # task_logger = TaskLogger("MountUnmountManager")
 # debug_logger = DebugLogger("MountUnmountManager", True)
 class Base:
-    def __init__(self, debug_logger):
-        self.task_logger = TaskLogger("MountUnmountManager")
+    def __init__(self, task_logger, debug_logger):
+        self.task_logger = task_logger
         self.debug_logger = debug_logger
         
         
