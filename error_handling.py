@@ -4,12 +4,10 @@ import os
 import sys
 import subprocess
 
-from log_record import DebugLogger, TaskLogger
-
 class ErrorHandling:
-    def __init__(self, error_handling_bool, debug_logger):
+    def __init__(self, error_handling_bool, task_logger, debug_logger):
         # 实例化任务日志记录器
-        self.task_logger = TaskLogger("ErrorHandling")
+        self.task_logger = task_logger
         self.debug_logger = debug_logger
         self.error_handling_bool = error_handling_bool
         
