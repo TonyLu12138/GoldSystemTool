@@ -4,16 +4,15 @@
 import os
 import subprocess
 from base import Base
-from log_record import DebugLogger, TaskLogger
 from process import ProgressBar
 
 class SystemConfigModifier:
-    def __init__(self, target_mount_point, logical_volume, debug_logger):
+    def __init__(self, target_mount_point, logical_volume, task_logger, debug_logger):
         self.logical_volume = logical_volume
         self.target_mount_point = target_mount_point
-        self.task_logger = TaskLogger("InstallationManager")
+        self.task_logger = task_logger
         self.debug_logger = debug_logger
-        self.base = Base(debug_logger)
+        self.base = Base(task_logger, debug_logger)
 
     # 返回UUID方法就是获取目标盘设备文件系统 UUID   blkid /dev/ubuntu-vg1/ubuntu-lv1
     def get_root_partition_uuid(self):
