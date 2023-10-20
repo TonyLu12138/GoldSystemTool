@@ -19,12 +19,6 @@ class TaskLogger:
 
         formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
-        # 输出到控制台
-        #console_handler = logging.StreamHandler(sys.stdout)
-        #console_handler.setLevel(logging.DEBUG)
-        #console_handler.setFormatter(formatter)
-        #self.logger.addHandler(console_handler)
-
         # 输出到文件
         log_file = os.path.join(log_directory, f"log-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log")
         file_handler = RotatingFileHandler(log_file, maxBytes=10 * 1024 * 1024, backupCount=5)
@@ -51,15 +45,16 @@ class DebugLogger:
     def __init__(self, task_name, debug_enabled=False):
         self.logger = logging.getLogger(f"Debug_{task_name}")
         self.logger.setLevel(logging.DEBUG)
+        self.name = f"debug_log-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log"
+        self.debug_log_file = os.path.join(log_directory, self.name)
+        self.debug_enabled = debug_enabled  # Set initial debug state
 
-        formatter = logging.Formatter('%(asctime)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-
-        debug_log_file = os.path.join(log_directory, f"debug_log-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log")
-        file_handler = RotatingFileHandler(debug_log_file, maxBytes=1000 * 1024 * 1024, backupCount=5)
+    def setup_file_handler(self):
+        file_handler = RotatingFileHandler(self.debug_log_file, maxBytes=1000 * 1024 * 1024, backupCount=5)
         file_handler.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(asctime)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
         file_handler.setFormatter(formatter)
         self.logger.addHandler(file_handler)
-        self.debug_enabled = debug_enabled  # Set initial debug state
 
     #传入一个true的bool才能使用debug操作记录
     def set_debug(self, enabled=True):
@@ -68,3 +63,6 @@ class DebugLogger:
     def log(self, message):
         if self.debug_enabled:
             self.logger.debug(message)
+
+    def log_name(self):
+        return self.name

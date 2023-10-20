@@ -77,6 +77,7 @@ class InputValidator:
                         'debug_button': True
                     }
                     self.debug_logger.set_debug(self.debug_info['debug_button'])
+                    self.debug_logger.setup_file_handler()
                 elif debug_button.lower() == 'false':
                     self.debug_info = {
                         'debug_button': False
@@ -97,12 +98,12 @@ class InputValidator:
         if 'backup_name' not in self.backup_info:
             self.debug_logger.log(f"未找到{self.backup_info}备份包") #debug
             print("验证备份包名称有效性方法中，未找到备份包名称，请检查配置文件")
+            
             return False
     
         source_path = source_mount_point
         
         specified_backup_name = self.backup_info.get('backup_name')  # 备份包名称
-        print(f"备份包名字是这个吗：{specified_backup_name}")
         self.debug_logger.log(f"获取备份包名称 {specified_backup_name}") #debug
 
         # 使用ProgressBar显示进度条
@@ -110,8 +111,6 @@ class InputValidator:
 
         # 遍历整个目录，查找备份包
         for root, dirs, files in os.walk(source_path):
-            print(f"当前目录：{root}")  # 输出当前目录，用于调试
-            print(f"文件列表：{files}")  # 输出文件列表，用于调试
 
             if specified_backup_name in files:
                 self.debug_logger.log(f"查找备份包成功") #debug
@@ -136,6 +135,9 @@ class InputValidator:
         
         # 使用ProgressBar显示进度条
         progress_bar = ProgressBar(2)
+
+        source = False
+        target = False
         
         # 验证源路径
         if source_path_value:
@@ -144,6 +146,7 @@ class InputValidator:
                 self.task_logger.log("INFO", f"源路径 '{source_path_value}' 存在，验证通过")
                 print(f"源路径 '{source_path_value}' 存在，验证通过")
                 progress_bar.update()
+                source = True
             else:
                 self.task_logger.log("ERROR",f"源路径 '{source_path_value}' 不存在")
                 self.debug_logger.log(f"源路径 '{source_path_value}' 不存在，验证失败") #debug
@@ -159,6 +162,7 @@ class InputValidator:
                 self.task_logger.log("INFO", f"目标路径 '{target_path_value}' 存在，验证通过")
                 print(f"目标路径 '{target_path_value}' 存在，验证通过")
                 progress_bar.update()
+                target = True
             else:
                 self.task_logger.log("ERROR",f"目标路径 '{target_path_value}' 不存在")
                 self.debug_logger.log(f"目标路径 '{target_path_value}' 不存在，请检查配置项'target_path'中的路径")
@@ -169,6 +173,11 @@ class InputValidator:
 
         progress_bar.close()  # 关闭进度条
         self.debug_logger.log("")  # 输出一个空白行
+
+        if target and source:
+            return True
+        else:
+            return False
 
     # 验证debug按钮
     def check_debug_switch(self):
