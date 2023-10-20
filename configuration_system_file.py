@@ -1,7 +1,6 @@
 #! /usr/bin/env python3
 # system_config.py
 
-import os
 import subprocess
 from base import Base
 from process import ProgressBar
