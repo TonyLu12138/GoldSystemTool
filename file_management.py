@@ -27,28 +27,28 @@ class MountUnmountManager:
         # 使用ProgressBar显示挂载进度
         progress_bar = ProgressBar(1)
         if target_path:
-            
+            progress_bar = ProgressBar(1)
             command = f"sudo mount {target_path} {mount_point}"
-            print(f"挂载目标盘方法de zhiling {command}")
             result = self.base.com(command).strip()
-            print(result, f"变量类型 {type(result)}")
             if "失败" not in str(result):
                 buffer = True
                 progress_bar.update()
                 self.debug_logger.log("挂载目标盘完成")
                 print(f"挂载目标盘完成")
             else:
-                for i in range(3):
+                for i in range(4):
                     result = self.base.com(command).strip()
-                    if "失败" in str(result):
+                    if "失败" not in str(result):
                         buffer = True
                         progress_bar.update()
-                        print(f"第{i}次尝试，挂载目标盘完成")
+                        print(f"第{i+1}次尝试，挂载目标盘完成")
                         break
+                    print(f"第{i+1}次尝试，挂载目标盘失败")
             if buffer is False:
-                self.error_handling.check_execution_result("多次挂载失败，进入错误处理") # 修改
+                self.error_handling.check_execution_result(False)
             self.debug_logger.log("")
             progress_bar.close()  # 关闭进度条
+            return buffer
         else:
             self.task_logger.log("ERROR", f"未找到配置项 'target_path' 中的路径")
             self.debug_logger.log("未找到配置项 'target_path' 中的路径")
@@ -67,24 +67,25 @@ class MountUnmountManager:
             progress_bar = ProgressBar(1)
             command = f"sudo mount {self.source_path} {mount_point}"
             result = self.base.com(command).strip()
-            print(result, f"变量类型 {type(result)}")
             if "失败" not in str(result):
                 buffer = True
                 progress_bar.update()
                 self.debug_logger.log("挂载源盘完成")
                 print(f"挂载源盘完成")
             else:
-                for i in range(3):
+                for i in range(4):
                     result = self.base.com(command).strip()
-                    if "失败" in str(result):
+                    if "失败" not in str(result):
                         buffer = True
                         progress_bar.update()
-                        print(f"第{i}次尝试，挂载源盘完成")
+                        print(f"第{i+1}次尝试，挂载源盘完成")
                         break
+                    print(f"第{i+1}次尝试，挂载源盘失败")
             if buffer is False:
-                self.error_handling.check_execution_result("多次挂载失败，进入错误处理") # 修改
+                self.error_handling.check_execution_result(False) # 修改
             self.debug_logger.log("")
             progress_bar.close()  # 关闭进度条
+            return buffer
         else:
             self.task_logger.log("ERROR", f"未找到配置项 'source_path' 中的路径")
             self.debug_logger.log("未找到配置项 'source_path' 中的路径")
@@ -93,12 +94,13 @@ class MountUnmountManager:
             return False
 
     def unmount_device(self, mount_point):
+        print(f"执行挂载{mount_point}方法")
         # 使用ProgressBar显示进度条
         progress_bar = ProgressBar(1)
         try:
             self.task_logger.log("INFO", f"执行卸载{mount_point}方法")
             self.debug_logger.log(f"执行卸载{mount_point}方法")
-            command = f"sudo umount -l {mount_point}"
+            command = f"sudo umount {mount_point}"
             self.base.com(command).strip()
             progress_bar.update()
             return True
@@ -197,7 +199,7 @@ class DirectoryFileManager:
             self.debug_logger.log("")  # 输出一个空白行
 
     # 删除目录
-    def delete_path(self, path):
+    def delete_path_file(self, path):
         # 使用ProgressBar显示创建目录进度
         progress_bar = ProgressBar(1)
         try:
@@ -216,8 +218,39 @@ class DirectoryFileManager:
                     return False
             else:
                 print("无法清空目标盘挂载路径")
-                self.task_logger.log("ERROR", f"删除路径失败，路径不存在")
-                self.debug_logger.log(f"删除路径失败，路径不存在")
+                self.task_logger.log("ERROR", f"无法清空目标盘挂载路径")
+                self.debug_logger.log(f"无法清空目标盘挂载路径")
+                return False
+        except subprocess.CalledProcessError as e:
+            print(f"删除路径失败：{e}")
+            self.debug_logger.log(f"删除路径失败：{e}")
+            return False
+        finally:
+            progress_bar.close()  # 关闭进度条
+            self.debug_logger.log("")  # 输出一个空白行
+            
+    # 删除目录
+    def delete_path(self, path):
+        # 使用ProgressBar显示创建目录进度
+        progress_bar = ProgressBar(1)
+        try:
+            self.task_logger.log("INFO", f"执行删除 {path} 方法")
+            self.debug_logger.log(f"开始删除 {path} ")
+
+            if self.base.check_path(path):
+                sudo_command = f"sudo rm -rf {path}"
+                self.base.com(sudo_command).strip()
+                print(f"临时路径{path}已删除")
+                if not self.base.check_path(path):
+                    progress_bar.update()
+                    return True
+                else:
+                    self.task_logger.log("WARNING", f"删除 {path} 失败")
+                    return False
+            else:
+                print(f"无法删除路径{path}")
+                self.task_logger.log("ERROR", f"删除路径{path}失败，路径不存在")
+                self.debug_logger.log(f"删除路径{path}失败，路径不存在")
                 return False
         except subprocess.CalledProcessError as e:
             print(f"删除路径失败：{e}")
@@ -278,45 +311,113 @@ class InstallationManager:
         self.debug_logger = debug_logger
         self.base = Base(task_logger, debug_logger)
 
-    def install_packages_and_grub(self, target_mount_point, disk_path):
+    def enter_chroot(self, target_mount_point):
         # 使用ProgressBar显示创建目录进度
         progress_bar = ProgressBar(1)
         try:
-            self.task_logger.log("INFO", f"disk_path: {disk_path}")
-            self.debug_logger.log(f"disk_path: {disk_path}")
-
-            print(f"disk_path: {disk_path}")
-            commands = [
-                "pwd",
-                "sudo apt update",
-                "apt install sudo",
-                "sudo apt install grub2-common grub-pc-bin",
-                f"sudo grub-install --recheck --no-floppy {disk_path}",
-                "update-initramfs -u",
-                "update-grub",
-                "exit"
-            ]
-
-            combined_command = " && ".join(commands)
-            command = f"sudo chroot {target_mount_point} /bin/bash -c 2> /dev/null '{combined_command}' --no-stdio" 
-
-            completed_process = self.base.com(command)
-            output_lines = completed_process.split('\n')
-
-            if len(output_lines) > 0 and output_lines[0] == "/":
-                print("已成功在chroot环境中安装软件包和grub")
+            self.task_logger.log("INFO", f"检查是否进入chroot环境")
+            self.debug_logger.log(f"检查是否进入chroot环境")
+            
+            # 检查是否进入chroot环境
+            chroot_command = f"sudo chroot {target_mount_point} /bin/bash -c 'pwd; exit'"
+            for i in range(4):
+                current_dir_result = self.base.com(chroot_command).strip()
+                if current_dir_result == "/":
+                    break
+                elif i == 3:
+                    print(f"第{i+1}次尝试，无法进入chroot环境: {current_dir_result}")
+                    return False  # 返回错误
+                else:
+                    print(f"第{i+1}次尝试，无法进入chroot环境, 重新尝试进入") 
                 progress_bar.update()
-                self.debug_logger.log("已成功在chroot环境中安装软件包和grub")
+            return True
+            
+        except subprocess.CalledProcessError as e:
+            print(f"进入chroot环境失败：{e}")
+            self.task_logger.log("ERROR", f"进入chroot环境失败：{e}")
+            self.debug_logger.log(f"进入chroot环境失败：{e}")
+            return False
+        finally:
+            progress_bar.close()  # 关闭进度条
+            self.debug_logger.log("")  # 输出一个空白行
+    
+    def install_packages(self, target_mount_point):
+        # 使用ProgressBar显示创建目录进度
+        progress_bar = ProgressBar(1)
+        try:
+            self.task_logger.log("INFO", f"安装软件包：")
+            self.debug_logger.log(f"安装软件包：")
+
+            # 安装软件包
+            apt_install_command = "apt install -y grub2-common grub-pc-bin"
+            chroot_command = f"sudo chroot {target_mount_point} /bin/bash -c '{apt_install_command}; echo -e \'\\n\\n\'; exit'"
+            apt_install_result = self.base.com(chroot_command)
+
+            if ("Setting up grub2-common" in apt_install_result and "Setting up grub-pc-bin" in apt_install_result) or "grub2-common is already" in apt_install_result:
+                print("已成功安装软件包")
+                self.debug_logger.log(f"已成功安装软件包")
+                progress_bar.update()
                 return True
             else:
-                print("未能进入chroot环境或软件包安装和grub安装失败")
-                self.task_logger.log("WARNING", f"无法进入chroot环境或无法安装相关软件")
-                self.debug_logger.log("未能进入chroot环境或软件包安装和grub安装失败")
+                print("安装软件包失败")
+                self.debug_logger.log(f"安装软件包失败: {apt_install_result}")
                 return False
         except subprocess.CalledProcessError as e:
-            print(f"软件包安装和grub安装失败：{e}")
-            self.task_logger.log("ERROR", f"软件包安装和grub安装失败：{e}")
-            self.debug_logger.log(f"软件包安装和grub安装失败：{e}")
+            print(f"软件包安装失败：{e}")
+            self.task_logger.log("ERROR", f"软件包安装失败：{e}")
+            self.debug_logger.log(f"软件包安装失败：{e}")
+            return False
+        finally:
+            progress_bar.close()  # 关闭进度条
+            self.debug_logger.log("")  # 输出一个空白行
+
+    def install_grub(self, target_mount_point, disk_path):
+        # 使用ProgressBar显示创建目录进度
+        progress_bar = ProgressBar(1)
+        try:
+            self.task_logger.log("INFO", f"安装grub")
+            self.debug_logger.log(f"安装grub")
+            7
+            # 安装grub
+            grub_install_command = f"grub-install --recheck --no-floppy {disk_path}"
+            chroot_command = f"sudo chroot {target_mount_point} /bin/bash -c '{grub_install_command} 2>&1; echo -e \'\\n\\n\'; exit'"
+            grub_install_result = self.base.com(chroot_command)
+            if ("Installing for" in grub_install_result) or "No error reported" in grub_install_result:
+                print("已成功安装grub")
+                self.debug_logger.log(f"已成功安装grub")
+                progress_bar.update()
+                return True
+            else:
+                print("安装grub失败")
+                self.debug_logger.log(f"安装grub失败: {grub_install_result}")
+                return False
+
+        except subprocess.CalledProcessError as e:
+            print(f"grub安装失败：{e}")
+            self.task_logger.log("ERROR", f"grub安装失败：{e}")
+            self.debug_logger.log(f"grub安装失败：{e}")
+            return False
+        finally:
+            progress_bar.close()  # 关闭进度条
+            self.debug_logger.log("")  # 输出一个空白行
+
+    def exit_chroot(self, target_mount_point):
+        # 使用ProgressBar显示创建目录进度
+        progress_bar = ProgressBar(1)
+        try:
+            self.task_logger.log("INFO", f"退出chroot环境")
+            self.debug_logger.log(f"退出chroot环境")
+
+            # 退出chroot环境
+            exit_command = "exit"
+            chroot_command = f"sudo chroot {target_mount_point} /bin/bash -c '{exit_command}'"
+            self.base.com(chroot_command)
+
+            progress_bar.update()
+
+            return True
+        except subprocess.CalledProcessError as e:
+            print(f"执行退出chroot的exit指令失败：{e}")
             return False
         finally:
             progress_bar.close()  # 关闭进度条
