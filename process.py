@@ -1,3 +1,4 @@
+#! /usr/bin/env python3
 from tqdm import tqdm
 
 class ProgressBar:

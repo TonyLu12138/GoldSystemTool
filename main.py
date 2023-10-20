@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 import os
+import subprocess
 from configuration_system_file import SystemConfigModifier
 from error_handling import ErrorHandling
 from file_management import DirectoryFileManager, InstallationManager, MountUnmountManager, TarExtractor
@@ -16,19 +17,21 @@ target_mount_point = "/mnt/target"
 def input_and_verification(validator):
     global DEBUG  # 声明要使用的全局变量 DEBUG
     # 读取
-    if str(validator.read_config()) == 'False':
+    if (str(validator.read_config()) == 'False'):
         print("配置文件读取失败，程序中断")
         exit()
     
-    # 验证设备路径的有效性
-    validator.validate_device_path()
-
     # 查询debug按钮信息
     validator.check_debug_switch()
 
+    # 验证设备路径的有效性
+    if str(validator.validate_device_path()) == 'False':
+        print("设备路径无效，程序中断")
+        exit()
+
     DEBUG = validator.get_debug_info().get('debug_button')
-    print("打印debug信息: " + str(validator.get_debug_info().get('debug_button')))
-    print("全局: " + str(DEBUG))
+    # print("打印debug信息: " + str(validator.get_debug_info().get('debug_button')))
+    # print("全局: " + str(DEBUG))
     # 查询错误处理配置信息
     true_error_handling_config = validator.check_error_handling_config()
     print("错误处理配置信息: " + str(true_error_handling_config))
@@ -47,28 +50,32 @@ def manage_and_analyze_disks(validator, task_logger, debug_logger):
     partition_structure = target_disk_analyzer.get_partition_structure()
   
     # 获取目标盘根目录所在分区
-    logical_volume = target_disk_analyzer.get_root_partition(partition_structure)
+    logical_volume = "/dev/" + target_disk_analyzer.get_root_partition(partition_structure)
 
 # 临时路径创建与挂载
-def create_and_mount_paths(directory_manager, mount_manager):
+def create_and_mount_paths(directory_manager, mount_manager, error_handling):
     # 创建临时目录
     directory_manager.create_directory("/mnt", "/source") 
     directory_manager.create_directory("/mnt", "/target")
 
     # 挂载源盘和目标盘
-    mount_manager.mount_source_path(source_mount_point)
-    mount_manager.mount_target_path(target_mount_point)
+    if not mount_manager.mount_source_path(source_mount_point):
+        error_handling.check_execution_result(False)
+    if not mount_manager.mount_target_path(target_mount_point):
+        error_handling.check_execution_result(False)
 
 
 # 文件与目录管理
-def manage_files_and_directories(backup, directory_manager, tar_extractor):
+def manage_files_and_directories(mount_manager, error_handling_bool, backup, directory_manager, tar_extractor, error_handling):
     # 清空挂载目标盘的路径下的所有文件
-    directory_manager.delete_path(target_mount_point)
+    if not directory_manager.delete_path_file(target_mount_point):
+        # 根据用户设定，决定是否 umount 相关目录
+        umount(mount_manager, error_handling_bool, error_handling, directory_manager)
 
     # 解压备份包到目标盘的挂载点中
     tar_gz_file = os.path.join(source_mount_point, backup)
-    tar_extractor.extract_tar_gz(tar_gz_file, target_mount_point)
-    print("解压完成 nei ")
+    if not tar_extractor.extract_tar_gz(tar_gz_file, target_mount_point):
+        error_handling.handle_extraction_failure(tar_gz_file, target_mount_point)
                 
 # 创建四个需要的目录
 def create_file(directory_manager):
@@ -79,22 +86,10 @@ def create_file(directory_manager):
         directory_manager.create_directory(target_mount_point, directory)
     print("创建结束")
 
-    # print("开始创建")
-    # directory_manager.create_directory(target_mount_point, "proc")
-    # directory_manager.create_directory(target_mount_point, "sys")
-    # directory_manager.create_directory(target_mount_point, "mnt")
-    # directory_manager.create_directory(target_mount_point, "media")
-    # directory_manager.create_directory(target_mount_point, "tmp")
-    # directory_manager.create_directory(target_mount_point, "dev")
-    # directory_manager.create_directory(target_mount_point, "run")
-    # print("创建结束")
-
 # 修改系统配置文件
 def modifying_configuration_file(task_logger, debug_logger):
     systemconfigmodifier = SystemConfigModifier(target_mount_point, logical_volume, task_logger, debug_logger)
     UUID = systemconfigmodifier.get_root_partition_uuid()
-
-    print(f"打印出UUID {UUID}")
 
     systemconfigmodifier.modify_fstab_file(UUID)
     systemconfigmodifier.modify_resolv_conf_file()
@@ -104,41 +99,56 @@ def bind_file_path(mount_manager):
     # 定义需要绑定的文件路径列表
     paths_to_bind = ["/dev", "/dev/pts", "/proc", "/sys"]
     for path in paths_to_bind:
-        # print(f"{path} and {target_mount_point}/{path[1:]}")
         mount_manager.bind_temporary_directory(path, f"{target_mount_point}/{path[1:]}")
 
-    # mount_manager.bind_temporary_directory("/dev", f"{target_mount_point}/dev")
-    # mount_manager.bind_temporary_directory("/dev/pts", f"{target_mount_point}/dev/pts")
-    # mount_manager.bind_temporary_directory("/proc", f"{target_mount_point}/proc")
-    # mount_manager.bind_temporary_directory("/sys", f"{target_mount_point}/sys")
-
 # 转入chroot环境、安装相关软件包、转出chroot环境
-def enter_chroot(installation_manager, target_mount_point, target_disk):
-    if installation_manager.install_packages_and_grub(target_mount_point, target_disk):
-        print("执行chroot环境并安装grub相关软件包方法成功")
-        return True
+def enter_chroot(installation_manager, target_mount_point, target_disk, error_handling):
+    print(f"检查：{installation_manager.enter_chroot(target_mount_point)}")
+    if installation_manager.enter_chroot(target_mount_point):
+        print("成功进入chroot环境")
+        if installation_manager.install_packages(target_mount_point):
+            print("成功安装软件包")
+            if installation_manager.install_grub(target_mount_point, target_disk):
+                print("成功安装grub")
+                exit_chroot(installation_manager, target_mount_point)
+            else:
+                print("安装grub失败，退出chroot环境")
+                exit_chroot(installation_manager, target_mount_point)
+                error_handling.handle_next_step_failure("安装grub失败", target_mount_point, source_mount_point)
+        else:
+            print("安装软件包失败，退出chroot环境")
+            exit_chroot(installation_manager, target_mount_point)
+            error_handling.handle_next_step_failure("安装软件包失败", target_mount_point, source_mount_point)
     else:
-        print("执行chroot环境并安装grub相关软件包方法失败")
-        return False
+        print("进入chroot环境失败，执行错误处理")
+        error_handling.handle_next_step_failure("进入chroot环境失败", target_mount_point, source_mount_point)
+        # 错误处理
+
+def exit_chroot(installation_manager, target_mount_point):
+    if installation_manager.exit_chroot(target_mount_point):
+        print("成功退出chroot")
+    else:
+        print("退出chroot失败")
+        exit()
 
 # 
-def unbind_and_umount(mount_manager, error_handling_bool):
-
+def unbind_and_umount(mount_manager):
     mount_manager.unbind_temporary_directory(f"{target_mount_point}/dev/pts")
     mount_manager.unbind_temporary_directory(f"{target_mount_point}/dev")
     mount_manager.unbind_temporary_directory(f"{target_mount_point}/proc")
     mount_manager.unbind_temporary_directory(f"{target_mount_point}/sys")
 
+def umount(mount_manager, error_handling_bool, error_handling, directory_manager):
     # 根据用户设定，决定是否 umount 相关目录
     if error_handling_bool:
         # 进行 umount 相关目录的操作
-        mount_manager.unmount_device(target_mount_point)
-        mount_manager.unmount_device(source_mount_point)
-
-    # 显示安装完成
-    print("安装完成")   
-
-
+        if not mount_manager.unmount_device(target_mount_point):
+            error_handling.handle_umount_failure(target_mount_point)
+        if not mount_manager.unmount_device(source_mount_point):
+            error_handling.handle_umount_failure(source_mount_point)
+        
+        directory_manager.delete_path(target_mount_point)
+        directory_manager.delete_path(source_mount_point)
 
 def main():
     input_validator = InputValidator()
@@ -167,12 +177,13 @@ def main():
     tar_extractor = TarExtractor(error_handling, task_logger, debug_logger)
     installation_manager = InstallationManager(task_logger, debug_logger)
     
+    
     # 磁盘分析与管理
     manage_and_analyze_disks(input_validator, task_logger, debug_logger)
     mount_manager = MountUnmountManager(source_path, logical_volume, error_handling, task_logger, debug_logger)
 
     # 创建对应文件夹，挂载文件
-    create_and_mount_paths(directory_manager, mount_manager)
+    create_and_mount_paths(directory_manager, mount_manager, error_handling)
 
     # 验证备份包名称有效性
     is_backup_name_valid = input_validator.validate_backup_name(source_mount_point)
@@ -180,10 +191,12 @@ def main():
         print("备份包名称验证通过！")
     else:
         print("备份包名称验证未通过！")
+        umount(mount_manager, error_handling_bool, error_handling, directory_manager)
+        exit()
 
     # 删除目标盘源文件，解压压缩包
-    manage_files_and_directories(backup, directory_manager, tar_extractor)
-    print ("解压完成 wai ")
+    manage_files_and_directories(mount_manager, error_handling_bool, backup, directory_manager, tar_extractor, error_handling)
+
     # 创建目录：mkdir proc sys mnt media tmp dev run
     create_file(directory_manager)
 
@@ -194,10 +207,13 @@ def main():
     bind_file_path(mount_manager)
 
     # 进入chroot环境安装相关软件包
-    if enter_chroot(installation_manager, target_mount_point, target_disk):
-        unbind_and_umount(mount_manager, error_handling_bool)
+    enter_chroot(installation_manager, target_mount_point, target_disk, error_handling)
+    
+    unbind_and_umount(mount_manager)
 
-    print(f"全局目标盘: {logical_volume}")
+    umount(mount_manager, error_handling_bool, error_handling, directory_manager)
 
+    # 显示安装完成
+    print("安装完成") 
 if __name__ == '__main__':
     main()
