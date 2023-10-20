@@ -4,12 +4,15 @@ import os
 import sys
 import subprocess
 
+from base import Base
+
 class ErrorHandling:
     def __init__(self, error_handling_bool, task_logger, debug_logger):
         # 实例化任务日志记录器
         self.task_logger = task_logger
         self.debug_logger = debug_logger
         self.error_handling_bool = error_handling_bool
+        self.base = Base(task_logger, debug_logger)
         
     def handle_next_step_failure(self, error_message, target_mount_point, source_mount_point):
         """
@@ -17,12 +20,9 @@ class ErrorHandling:
         """
         # 记录错误信息到任务日志
         self.task_logger.log("ERROR", error_message)
-
+        self.debug_logger.log(error_message)
         try:
-            # 将后台命令的完整报错输出到 log 日志中
-            completed_process = subprocess.run(["command_that_failed"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-            stdout_and_stderr = completed_process.stdout + completed_process.stderr
-
+            
             # 根据用户设定，决定是否 umount 相关目录
             if self.error_handling_bool:
                 # 进行 umount 相关目录的操作
@@ -31,28 +31,35 @@ class ErrorHandling:
                 # 判断卸载目标盘路径
                 if unmount_target_result:
                     self.task_logger.log("INFO", "已尝试 umount 相关目录")
+                    self.debug_logger.log("已尝试 umount 相关目录")
                 else:
                     self.task_logger.log("ERROR", "umount 相关目录失败")
+                    self.debug_logger.log("umount 相关目录失败")
+                    self.handle_umount_failure(target_mount_point)
                 # 判断卸载源盘路径
                 if unmount_soucer_result:
                     self.task_logger.log("INFO", "已尝试 umount 相关目录")
+                    self.debug_logger.log("已尝试 umount 相关目录")
                 else:
                     self.task_logger.log("ERROR", "umount 相关目录失败")
+                    self.debug_logger.log("umount 相关目录失败")
+                    self.handle_umount_failure(target_mount_point)
 
         except Exception as e:
             error_message = f"处理失败：{e}"
             self.task_logger.log("ERROR", error_message)
-
-        # 结束程序
-        self.task_logger.log("INFO", "程序结束")
-        sys.exit(1)
-
+        finally:
+            # 结束程序
+            self.task_logger.log("INFO", "程序结束")
+            self.debug_logger.log("程序结束")
+            exit()
+            
     # 为了防止循环调用的定义，就在这里再次写一遍解压方法
     def extract_tar_gz(self, tar_gz_file, target_path):
         try:
             # 执行解压命令
             command = f"sudo tar -xzpvf {tar_gz_file} -C {target_path} --numeric-owner"
-            subprocess.run(command, shell=True, check=True)
+            self.base.com(command, shell=True, check=True)
 
             self.debug_logger.log(f"成功解压 {tar_gz_file} 到 {target_path}")
             return True
@@ -67,17 +74,10 @@ class ErrorHandling:
         处理解压失败的情况
         """
         # 记录错误信息到任务日志
-        self.task_logger.log("ERROR", error_message)
+        self.task_logger.log("ERROR", "解压失败")
+        self.debug_logger.log("解压失败")
 
         try:
-            # 记录解压过程中的错误和异常情况到 log 日志中
-            log_filename = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + "_unzip.log"
-            log_filepath = f"/path/to/log/directory/{log_filename}"
-            with open(log_filepath, "w") as log_file:
-                success = self.extract_tar_gz(tar_gz_file, target_path)
-                if not success:
-                    self.task_logger.log("ERROR", "解压失败")
-
             # 回滚操作：删除解压目录 (=将系统恢复到解压前的状态)
             self.delete_unzip_directory(target_path)
 
@@ -103,15 +103,13 @@ class ErrorHandling:
 
         # 结束程序
         self.task_logger.log("INFO", "程序结束")
-        sys.exit(1)
+        exit()
 
     def handle_grub_installation_failure(self, error_message, target_mount_point, source_mount_point):
         """
         处理grub2软件包安装失败的情况
         """
-        print("grub2相关软件包安装失败")
-        # 退出当前 chroot 环境
-        self.installation_manager.exit_chroot_environment()
+        print("错误处理grub2软件包安装失败")
 
         # 调用 "无法执行下一步的问题" 的处理方法
         self.handle_next_step_failure(error_message, target_mount_point, source_mount_point)
@@ -133,11 +131,13 @@ class ErrorHandling:
             subprocess.run("sync", shell=True, check=True)
 
             # 执行 umount -l，强制卸载
-            subprocess.run(f"sudo umount -l {mount_point}", shell=True, check=True)
+            command = f"sudo umount -l {mount_point}"
+            self.base.com(command)
+            print(f"已成功强制卸载 {mount_point}")
             self.debug_logger.log(f"已成功强制卸载 {mount_point}")
 
             # 执行 df -h 检查是否卸载成功
-            df_output = subprocess.run("df -h", shell=True, capture_output=True, text=True)
+            df_output = self.base.com("df -h", shell=True, capture_output=True, text=True)
             if mount_point not in df_output.stdout:
                 self.debug_logger.log(f"卸载后挂载点 {mount_point} 不再存在")
             else:
@@ -151,6 +151,6 @@ class ErrorHandling:
         """
         if not success_condition:
             print("任务执行结果不符合预期")
-            sys.exit(1)
+            exit()
         else:
             print("任务执行成功")
